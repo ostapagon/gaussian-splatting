@@ -29,10 +29,7 @@ class CameraInfo(NamedTuple):
     T: np.array
     FovY: np.array
     FovX: np.array
-    timestemp: int
     image: np.array
-    mask: np.array
-    depth: np.array
     image_path: str
     image_name: str
     width: int
@@ -179,7 +176,7 @@ def readColmapSceneInfo(path, images, eval, llffhold=8):
                            ply_path=ply_path)
     return scene_info
 
-def readCamerasFromTransforms(path, transformsfile, white_background):
+def readCamerasFromTransforms(path, transformsfile, white_background, extension=".png"):
     cam_infos = []
 
     with open(os.path.join(path, transformsfile)) as json_file:
@@ -200,16 +197,6 @@ def readCamerasFromTransforms(path, transformsfile, white_background):
             R = np.transpose(w2c[:3,:3])  # R is stored transposed due to 'glm' in CUDA code
             T = w2c[:3, 3]
 
-            mask = None
-            if "mask_path" in frame:
-                mask_path = os.path.join(path, frame["mask_path"])
-                mask = np.load(mask_path)
-
-            depth = None
-            if "depth_path" in frame:
-                depth_path = os.path.join(path, frame["depth_path"])
-                depth = np.load(depth_path)
-
             image_path = os.path.join(path, cam_name)
             image_name = Path(cam_name).stem
             image = Image.open(image_path)
@@ -226,18 +213,18 @@ def readCamerasFromTransforms(path, transformsfile, white_background):
             FovY = fovy 
             FovX = fovx
 
-            cam_infos.append(CameraInfo(uid=idx, R=R, T=T, FovY=FovY, FovX=FovX, timestemp=idx, image=image, mask=mask, depth=depth,
+            cam_infos.append(CameraInfo(uid=idx, R=R, T=T, FovY=FovY, FovX=FovX, image=image,
                             image_path=image_path, image_name=image_name, width=image.size[0], height=image.size[1]))
             
     return cam_infos
 
 def readNerfSyntheticInfo(path, white_background, eval, extension=".png"):
     print("Reading Training Transforms")
-    train_cam_infos = readCamerasFromTransforms(path, "transforms_train.json", white_background)
+    train_cam_infos = readCamerasFromTransforms(path, "transforms_train.json", white_background, extension)
     test_cam_infos = []
     if os.path.exists(os.path.join(path, "transforms_test.json")):
         print("Reading Test Transforms")
-        test_cam_infos = readCamerasFromTransforms(path, "transforms_test.json", white_background)
+        test_cam_infos = readCamerasFromTransforms(path, "transforms_test.json", white_background, extension)
     
     if not eval:
         train_cam_infos.extend(test_cam_infos)

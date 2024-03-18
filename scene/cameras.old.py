@@ -13,16 +13,14 @@ import torch
 from torch import nn
 import numpy as np
 from utils.graphics_utils import getWorld2View2, getProjectionMatrix
-import math
 
 class Camera(nn.Module):
-    def __init__(self, colmap_id, R, T, FoVx, FoVy, timestemp, image, mask, depth,
+    def __init__(self, colmap_id, R, T, FoVx, FoVy, image, gt_alpha_mask,
                  image_name, uid,
                  trans=np.array([0.0, 0.0, 0.0]), scale=1.0, data_device = "cuda"
                  ):
         super(Camera, self).__init__()
 
-        self.timestemp = timestemp
         self.uid = uid
         self.colmap_id = colmap_id
         self.R = R
@@ -38,16 +36,14 @@ class Camera(nn.Module):
             print(f"[Warning] Custom device {data_device} failed, fallback to default cuda device" )
             self.data_device = torch.device("cuda")
 
-        
-        self.mask = mask.to(self.data_device)
-        self.depth = depth.to(self.data_device)
-
         self.original_image = image.clamp(0.0, 1.0).to(self.data_device)
         self.image_width = self.original_image.shape[2]
         self.image_height = self.original_image.shape[1]
 
-        self.Fx = self.image_width / (2 * math.tan(self.FoVx / 2))
-        self.Fy = self.image_height / (2 * math.tan(self.FoVy / 2))
+        if gt_alpha_mask is not None:
+            self.original_image *= gt_alpha_mask.to(self.data_device)
+        else:
+            self.original_image *= torch.ones((1, self.image_height, self.image_width), device=self.data_device)
 
         self.zfar = 100.0
         self.znear = 0.01
